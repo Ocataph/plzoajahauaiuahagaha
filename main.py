@@ -6,6 +6,11 @@ from threading import Thread
 from flask import Flask
 import nextcord
 from nextcord.ext import commands
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -13,7 +18,8 @@ app = Flask(__name__)
 def home():
     return "Bot is alive!"
 
-DISCORD_TOKEN = "MTM1ODM2NDgyNTQxMTEyNTMzMA.GZBkiR.UEX3a_60dx6h81EydupCv4jbmX130zatF2q_Fg"
+# Get the Discord token from the environment variable
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 PORT = 8080  # Define the port for the Flask server
 
 # Initialize the bot as a commands.Bot instance
@@ -97,7 +103,7 @@ async def bypass(interaction: discord.Interaction, cookie: str):
         error_embed = nextcord.Embed(
             title="Error",
             description=str(e),
-            color=nextcord.Color.red()
+ color=nextcord.Color.red()
         )
         await interaction.followup.send(embed=error_embed)
 
@@ -119,7 +125,7 @@ async def check_cookie(interaction: discord.Interaction, cookie: str):
             if xsrf_request.status_code == 403 and "x-csrf-token" in xsrf_request.headers:
                 csrf_token = xsrf_request.headers["x-csrf-token"]
                 headers = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36",
+                    "User -Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36",
                     "X-CSRF-TOKEN": csrf_token,
                     "Cookie": f".ROBLOSECURITY={cookie}"
                 }
@@ -182,20 +188,18 @@ async def check_cookie(interaction: discord.Interaction, cookie: str):
 
     pendingrobux = sum.get("pendingRobuxTotal", 0)
 
-    join_date = session.get(f"https://users.roblox.com/v1/users/{userid}").json()["created"]
+    join_date = session .get(f"https://users.roblox.com/v1/users/{userid}").json()["created"]
     dt = datetime.strptime(join_date, "%Y-%m-%dT%H:%M:%S.%fZ")
     date = dt.strftime("%Y-%m-%d %H:%M:%S")
 
-
     followers = session.get(f"https://friends.roblox.com/v1/users/{userid}/followers/count").json()["count"]
     friends = session.get(f"https://friends.roblox.com/v1/users/{userid}/friends/count").json()["count"]
-
 
     cook = discord.Embed(title=f'**Yey A Valid Cookie 🍪**', color=0x42be8f)
     cook.set_thumbnail(url=f'{avatarurl}')
     cook.add_field(name="Profile Link:", value=f'**[Click Here](https://www.roblox.com/users/{userid}/profile)**', inline=False)
     cook.add_field(name="Username👀:", value=f'```{username}```', inline=True)
-    cook.add_field(name="UserID:🔍", value=f'```{userid}```', inline=True)
+    cook.add_field(name="User ID:🔍", value=f'```{userid}```', inline=True)
     cook.add_field(name="Display Name👀:", value=f'```{displayname}```', inline=True)
     cook.add_field(name="Verified Email🔐:", value=f'```{email}```', inline=True)
     cook.add_field(name="Premium💎:", value=f'```{membership_status}```', inline=True)
@@ -223,7 +227,7 @@ async def force_13plus(interaction: discord.Interaction, cookie: str, password: 
             if xsrf_request.status_code == 403 and "x-csrf-token" in xsrf_request.headers:
                 csrf_token = xsrf_request.headers["x-csrf-token"]
                 headers = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36",
+                    "User -Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36",
                     "X-CSRF-TOKEN": csrf_token,
                     "Cookie": f".ROBLOSECURITY={cookie}"
                 }
@@ -263,11 +267,11 @@ async def force_13plus(interaction: discord.Interaction, cookie: str, password: 
 
     continueres = session.post("https://apis.roblox.com/challenge/v1/continue",
                            json={
-                               "challengeId": challengeid,
+ "challengeId": challengeid,
                                "challengeMetadata": json.dumps({"reauthenticationToken": token}),
                                "challengeType": "reauthentication"
                            })
-    if continueres.status_code!= 200:
+    if continueres.status_code != 200:
         await interaction.followup.send(f"Please check your password.")
         return
     session.headers["Rblx-Challenge-Id"] = challengeid
@@ -276,11 +280,11 @@ async def force_13plus(interaction: discord.Interaction, cookie: str, password: 
 
     res69 = session.post("https://users.roblox.com/v1/birthdate", 
                     json={
-                        "birthMonth":2,
-                        "birthDay":9,
-                        "birthYear":2013
+                        "birthMonth": 2,
+                        "birthDay": 9,
+                        "birthYear": 2013
                     })
-    if res69.status_code!= 200:
+    if res69.status_code != 200:
         await interaction.followup.send(f"Failed to change birthday. Please try again.")
         return
     
@@ -299,7 +303,7 @@ async def change_email(interaction: discord.Interaction, cookie: str, new_email:
             if xsrf_request.status_code == 403 and "x-csrf-token" in xsrf_request.headers:
                 csrf_token = xsrf_request.headers["x-csrf-token"]
                 headers = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36",
+                    "User -Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36",
                     "X-CSRF-TOKEN": csrf_token,
                     "Cookie": f".ROBLOSECURITY={cookie}"
                 }
@@ -317,14 +321,14 @@ async def change_email(interaction: discord.Interaction, cookie: str, new_email:
         await interaction.followup.send(f"Invalid cookie provided.")
         return
     
-    if is_valid_email(new_email) == False:
+    if not is_valid_email(new_email):
         await interaction.followup.send(f"Invalid email format.")
         return
     
     session.headers = headers
     res1 = session.post("https://accountsettings.roblox.com/v1/email",
                         json={"password": password, "emailAddress": new_email})
-    if res1.status_code!= 200:
+    if res1.status_code != 200:
         await interaction.followup.send(f"Failed to change email. Please check your password and try again.")
         return
     
@@ -343,7 +347,7 @@ async def change_password(interaction: discord.Interaction, cookie: str, old_pas
             if xsrf_request.status_code == 403 and "x-csrf-token" in xsrf_request.headers:
                 csrf_token = xsrf_request.headers["x-csrf-token"]
                 headers = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36",
+                    "User -Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36",
                     "X-CSRF-TOKEN": csrf_token,
                     "Cookie": f".ROBLOSECURITY={cookie}"
                 }
@@ -362,8 +366,8 @@ async def change_password(interaction: discord.Interaction, cookie: str, old_pas
     res1 = session.post("https://auth.roblox.com/v2/user/passwords/change", json={
         "currentPassword": old_password,
         "newPassword": new_password
-    })
-    if res1.status_code!= 200:
+ })
+    if res1.status_code != 200:
         await interaction.followup.send(f"Failed to change password. Please check your old password and try again.")
         return
     
