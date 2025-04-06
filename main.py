@@ -13,7 +13,7 @@ app = Flask(__name__)
 def home():
     return "Bot is alive!"
 
-DISCORD_TOKEN = "YOUR_DISCORD_TOKEN_HERE"
+DISCORD_TOKEN = "MTM1ODM2NDgyNTQxMTEyNTMzMA.GZBkiR.UEX3a_60dx6h81EydupCv4jbmX130zatF2q_Fg"
 PORT = 8080  # Define the port for the Flask server
 
 # Initialize the bot as a commands.Bot instance
